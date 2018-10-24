@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context antiJARLocking="true" path="/swa">
+    <Resource
+            name="jdbc/swa"
+            auth="Container"
+            type="javax.sql.DataSource"
+            maxTotal="50"
+            maxIdle="30"
+            maxWaitMillis="10000"
+            driverClassName="com.mysql.jdbc.Driver"
+            username="dr4jzb24h852pb67"
+            password="diq8tqlcfmg70ren"
+            url="jdbc:mysql://m60mxazb4g6sb4nn.chr7pe7iynqr.eu-west-1.rds.amazonaws.com:3306/vwda2oqf9fppbxps"
+    />
+</Context>

@@ -1,0 +1,693 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package business.dao.impl;
+
+import business.Annuncio;
+import business.Azienda;
+import business.Studente;
+import business.Tirocinio;
+import business.Utente;
+import business.dao.intf.AziendaDAO;
+import business.dao.intf.UtenteDAO;
+import business.dao.data.Database;
+import business.dao.data.DataLayerException;
+import business.Resoconto;
+import business.Richiesta;
+
+import java.io.InputStream;
+import java.sql.Blob;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * @author lorenzo
+ */
+public class AziendaDAOImpl implements AziendaDAO {
+
+    private static final String GET_RICHIESTE = "SELECT Studente.idStudente,Studente.nome,Studente.cognome,Utente.email, Studente.codFiscale, Studente.Telefono, Annuncio.idAnnuncio "
+            + "                                           FROM Richiesta  \n"
+            + "                                                           JOIN Annuncio  ON Annuncio.idAnnuncio=Richiesta.Annuncio_idAnnuncio \n"
+            + "                                                           JOIN Azienda ON Annuncio.Azienda_idAzienda = Azienda.idAzienda \n"
+            + "                                                           JOIN Studente ON Richiesta.Studente_idStudente = Studente.idStudente  \n"
+            + "                                                           JOIN Utente ON Utente.idUtente = Studente.idStudente  \n"
+            + "                                                               WHERE Azienda.idAzienda = ?";
+
+
+    private static final String GET_AZIENDE = "SELECT azienda.idAzienda,azienda.ragSociale FROM azienda";
+
+    private static final String GET_AZIENDA = "SELECT * FROM Azienda WHERE Azienda.idAzienda=?";
+
+    private static final String GET_TIROCINANTI = "SELECT Studente.idStudente, Studente.nome, Studente.cognome, Utente.email, "
+            + "                                    Studente.codFiscale, Studente.Telefono, Tirocinio.Annuncio_idAnnuncio FROM Studente "
+            + "                                     JOIN Tirocinio ON Studente.idStudente = Tirocinio.Studente_idStudente "
+            + "                                     JOIN Annuncio ON Tirocinio.Annuncio_idAnnuncio = Annuncio.idAnnuncio "
+            + "                                     JOIN Azienda ON Azienda.idAzienda = Annuncio.Azienda_idAzienda "
+            + "                                  JOIN Utente ON Utente.idUtente = Studente.idStudente "
+            + "                                         WHERE idAzienda = ? AND Tirocinio.Resoconto_idResoconto IS NULL";
+
+    private static final String GET_ALL_TIROCINANTI = "SELECT Studente.idStudente, Studente.nome, Studente.cognome, Utente.email, "
+            + "                                    Studente.codFiscale, Studente.Telefono, Tirocinio.Annuncio_idAnnuncio FROM Studente "
+            + "                                     JOIN Tirocinio ON Studente.idStudente = Tirocinio.Studente_idStudente "
+            + "                                     JOIN Annuncio ON Tirocinio.Annuncio_idAnnuncio = Annuncio.idAnnuncio "
+            + "                                     JOIN Azienda ON Azienda.idAzienda = Annuncio.Azienda_idAzienda "
+            + "                                  JOIN Utente ON Utente.idUtente = Studente.idStudente "
+            + "                                         WHERE idAzienda = ?";
+
+
+    private static final String GET_CONVENZIONE = "SELECT Convenzione.nome, Convenzione.file, Convenzione.estensione, Convenzione.peso "
+            + "                                     FROM Azienda "
+            + "                                      JOIN Convenzione ON Azienda.Convenzione_idConvenzione = Convenzione.idConvenzione "
+            + "                                         WHERE Azienda.idAzienda = ?";
+
+    private static final String GET_MODULO_CONVENZIONE = "SELECT Convenzione.nome, Convenzione.file, Convenzione.estensione, Convenzione.peso FROM Convenzione WHERE Convenzione.idConvenzione = 0";
+
+    private static final String GET_APPROVAZIONE = "SELECT * FROM Azienda "
+            + "                                         JOIN Convenzione ON Azienda.idConvenzione = Convenzione.idConvenzione "
+            + "                                             WHERE Azienda.idAzienda=?";
+
+    private static final String SET_CONCLUDI_TIROCINIO = "INSERT INTO `resoconto` (oreSvolte, attivitaSvolta, risConseguito) VALUES (?,?,?);";
+
+    private static final String UPDATE_ID_RESOCONTO_TIROCINIO = "UPDATE Tirocinio SET Resoconto_idResoconto=? WHERE Annuncio_idAnnuncio=? AND Studente_idStudente=?";
+
+    private static final String REGISTRAZIONE_AZIENDA = "INSERT INTO azienda ( stato, ragSociale, indirizzoSede, pIVA, foro, cap, citta, provincia, nomeRap, cognomeRap, telResponsabile, nomeResponsabile, cognomeResponsabile, emailResponsabile, idAzienda, dataInizio, dataFine) "
+            + "                                         VALUES ('REGISTRATA',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+
+    private static final String UPDATE_STATO = "UPDATE Azienda SET Stato=? WHERE idAzienda=?";
+
+    private static final String GET_STATO = "SELECT Azienda.Stato FROM Azienda WHERE idAzienda=?";
+
+    private static final String IS_CONVENZIONATA = "SELECT Azienda.Stato FROM Azienda WHERE idAzienda=? AND Stato='CONVENZIONATA'";
+
+    private static final String DELETE_TIROCINIO = "DELETE FROM Tirocinio WHERE Tirocinio.Annuncio_idAnnuncio=? AND Studente_idStudente=?";
+
+    private static final String DELETE_RICHIESTA = "DELETE FROM Richiesta WHERE Richiesta.Annuncio_idAnnuncio=? AND Richiesta.Studente_idStudente=?";
+
+    private static final String SET_NUOVO_TIROCINIO = "INSERT INTO Tirocinio (Annuncio_idAnnuncio, Studente_idStudente, dataInizio, dataFine, crediti)\n"
+            + "VALUES (?,?,?,?,?)";
+
+    private static final String GET_AZIENDE_CONVENZIONATE = "SELECT azienda.ragSociale FROM azienda WHERE Stato='CONVENZIONATA'";
+
+    private static final String REMOVE_AZIENDA = "DELETE FROM AZIENDA WHERE idAzienda=?";
+
+    private static final String UPDATE_ACTIVATION = "UPDATE Azienda SET attiva=? WHERE idAzienda=?";
+
+    private static final String UPDATE_AZIENDA = "UPDATE Azienda SET ragSociale=?,indirizzoSede=?,pIVA=?,foro=?,cap=?,citta=?,provincia=?,nomeRap=?,cognomeRap=?,telResponsabile=?,nomeResponsabile=?,cognomeResponsabile=?,emailResponsabile=? WHERE idAzienda=?";
+
+
+    @Override
+    public List<Richiesta> getRichieste(long idAzienda) throws DataLayerException {
+
+        List<Richiesta> richieste = new ArrayList();
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(GET_RICHIESTE)) {
+                ps.setLong(1, idAzienda);
+                try (ResultSet rset = ps.executeQuery()) {
+
+                    while (rset.next()) {
+                        Studente s = new Studente(rset.getLong("idStudente"),
+                                rset.getString("nome"), rset.getString("cognome"),
+                                rset.getString("email"),
+                                rset.getString("codFiscale"),
+                                rset.getString("telefono")
+                        );
+                        Annuncio a = new Annuncio(rset.getLong("idAnnuncio"));
+
+                        richieste.add(new Richiesta(a, s));
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("GET RICHIESTE", ex);
+        }
+        return richieste;
+    }
+
+
+    @Override
+    public List<Azienda> getAziende() throws DataLayerException {
+
+        List<Azienda> aziende = new ArrayList();
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(GET_AZIENDE)) {
+                try (ResultSet rset = ps.executeQuery()) {
+                    while (rset.next()) {
+                        aziende.add(new Azienda(rset.getInt("idAzienda"), rset.getString("ragSociale")));
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("GET AZIENDE", ex);
+        }
+        return aziende;
+    }
+
+    @Override
+    public List<Tirocinio> getTirocini(long id) throws DataLayerException {
+        List<Tirocinio> tirocini = new ArrayList();
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(GET_TIROCINANTI)) {
+                //Prepare statement
+                ps.setLong(1, id);
+                try (ResultSet rset = ps.executeQuery()) {
+                    while (rset.next()) {
+
+                        Annuncio ann = new Annuncio(rset.getLong("Tirocinio.Annuncio_idAnnuncio"));
+                        Studente stu = new Studente(rset.getLong("idStudente"), rset.getString("nome"), rset.getString("cognome"), rset.getString("email"), rset.getString("codFiscale"), rset.getString("telefono"));
+
+                        tirocini.add(new Tirocinio(stu, ann));
+
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("GET TIROCINI", ex);
+        }
+        return tirocini;
+    }
+
+    @Override
+    public List<Studente> getAllTirocinanti(Utente utente) throws DataLayerException {
+        List<Studente> tirocinanti = new ArrayList();
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(GET_ALL_TIROCINANTI)) {
+                //Prepare statement
+                ps.setLong(1, utente.getId());
+                try (ResultSet rset = ps.executeQuery()) {
+                    while (rset.next()) {
+                        Studente stu = new Studente(rset.getLong("idStudente"), rset.getString("nome"), rset.getString("cognome"), rset.getString("email"), rset.getString("codFiscale"), rset.getString("telefono"));
+                        tirocinanti.add(stu);
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("DATA - GET ALL TIROCINI", ex);
+        }
+        return tirocinanti;
+    }
+
+    @Override
+    public Azienda getApprovazione(long id) throws DataLayerException {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet rset = null;
+        Azienda azienda = null;
+
+        try {
+            connection = Database.getDatasource().getConnection();
+            ps = connection.prepareStatement(GET_APPROVAZIONE);
+            ps.setLong(1, id);
+            rset = ps.executeQuery();
+
+            if (rset.next()) {
+                azienda = new Azienda(rset.getLong("idAzienda"), rset.getString("nomeRap"), rset.getString("cognomeRap"), rset.getString("telResponsabile"), rset.getString("nomeResponsabile"), rset.getString("cognomeResponsabile"), rset.getString("emailResponsabile"), rset.getString("ragSociale"), rset.getString("indirizzoSede"), rset.getString("pIVA"), rset.getString("foro"), rset.getString("cap"), rset.getString("citta"), rset.getString("provincia"));
+            }
+
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE APPROVAZIONE AZIENDA", ex);
+        } finally {
+            try {
+                rset.close();
+                ps.close();
+                connection.close();
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+            }
+        }
+        return azienda;
+    }
+
+    /**
+     * Salva il resoconto aggiornando la tabella tirocinio
+     *
+     * @param tirocinio
+     * @return
+     * @throws business.dao.data.DataLayerException
+     */
+    @Override
+    public Resoconto setConcludiTirocinio(Tirocinio tirocinio) throws DataLayerException {
+        Connection connection = null;
+        PreparedStatement ps = null;
+
+        try {
+            connection = Database.getDatasource().getConnection();
+            ps = connection.prepareStatement(SET_CONCLUDI_TIROCINIO, Statement.RETURN_GENERATED_KEYS);
+
+            ps.setInt(1, tirocinio.getResoconto().getOreSvolte());
+            ps.setString(2, tirocinio.getResoconto().getAttivitaSvolta());
+            ps.setString(3, tirocinio.getResoconto().getRisultatoConseguito());
+
+            int result = ps.executeUpdate();
+
+            ResultSet generatedKeys = ps.getGeneratedKeys();
+            if (generatedKeys.next() && result != 0) {
+
+                long idResoconto = generatedKeys.getLong(1);
+
+                ps = connection.prepareStatement(UPDATE_ID_RESOCONTO_TIROCINIO);
+                ps.setLong(1, idResoconto);
+                ps.setLong(2, tirocinio.getAnnuncio().getId());
+                ps.setLong(3, tirocinio.getStudente().getId());
+
+                int result2 = ps.executeUpdate();
+                if (result2 != 0) {
+                } else {
+                    throw new DataLayerException("ERRORE UPDATE TIROCINIO");
+                }
+                return new Resoconto(idResoconto);
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE CONCLUDI TIROCINIO", ex);
+        } finally {
+            try {
+                ps.close();
+                connection.close();
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+            }
+        }
+
+        return null;
+
+    }
+
+    @Override
+    public long setRegistrazioneAzienda(Azienda azienda) throws DataLayerException {
+        long result = -1;
+        //Creazione Utente
+        UtenteDAO u = new UtenteDAOImpl();
+        Utente nuovoUtente = u.nuovoUtente(new Utente(azienda.getUsername(), azienda.getPassword(), azienda.getEmail(), "AZ"));
+
+        if (nuovoUtente != null) {//NUOVO UTENTE - OK
+
+
+            Connection connection = null;
+            PreparedStatement ps = null;
+
+            try {
+                connection = Database.getDatasource().getConnection(); // CREAZIONE CONNESSIONE
+
+                ps = connection.prepareStatement(REGISTRAZIONE_AZIENDA);
+
+                ps.setString(1, azienda.getRagioneSociale());
+                ps.setString(2, azienda.getIndirizzoSede());
+                ps.setString(3, azienda.getPartitaIva());
+                ps.setString(4, azienda.getForoCompetente());
+                ps.setString(5, azienda.getCap());
+                ps.setString(6, azienda.getCitta());
+                ps.setString(7, azienda.getProvincia());
+                ps.setString(8, azienda.getNomeRappresentante());
+                ps.setString(9, azienda.getCognomeRappresentante());
+                ps.setString(10, azienda.getTelResponsabile());
+                ps.setString(11, azienda.getNomeResponsabile());
+                ps.setString(12, azienda.getCognomeResponsabile());
+                ps.setString(13, azienda.getEmailResponsabile());
+                ps.setLong(14, nuovoUtente.getId());
+                ps.setDate(15, new java.sql.Date(azienda.getDataIscrione().getTime()));
+                ps.setDate(16, new java.sql.Date(azienda.getDataTermine().getTime()));
+
+                if (ps.executeUpdate() == 1) {
+                    result = nuovoUtente.getId();
+                }
+
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE REGISTRAZIONE AZIENDA", ex);
+            } finally {
+                //CHIUSURA CONNESSIONE
+                try {
+                    ps.close();
+                    connection.close();
+                } catch (SQLException ex) {
+                    throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+                }
+            }
+        } else {//NUOVO UTENTE - ERRORE
+            throw new DataLayerException("ERRORE CREAZIONE - UTENTE");
+        }
+        return result;
+    }
+
+    @Override
+    public int updateStato(Azienda azienda, String stato) throws DataLayerException {
+        int result = 0;
+        Connection connection = null;
+        PreparedStatement ps = null;
+
+        try {
+            connection = Database.getDatasource().getConnection(); // CREAZIONE CONNESSIONE
+
+            ps = connection.prepareStatement(UPDATE_STATO);
+
+            ps.setString(1, stato);
+            ps.setLong(2, azienda.getId());
+
+            result = ps.executeUpdate();
+
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE UPDATE STATO AZIENDA", ex);
+        } finally {
+            //CHIUSURA CONNESSIONE
+            try {
+                ps.close();
+                connection.close();
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public int updateActivation(Azienda azienda) throws DataLayerException {
+
+        int result = -1;
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(UPDATE_ACTIVATION);) {
+
+                ps.setBoolean(1, azienda.isAttiva());
+                ps.setLong(2, azienda.getId());
+
+                result = ps.executeUpdate();
+
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE UPDATE ATTIVA", ex);
+        }
+        return result;
+    }
+
+    @Override
+    public int updateAzienda(Azienda azienda) throws DataLayerException {
+
+        System.out.println("AZ" + azienda.toString());
+
+        int result = -1;
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(UPDATE_AZIENDA);) {
+
+                ps.setString(1, azienda.getRagioneSociale());
+                ps.setString(2, azienda.getIndirizzoSede());
+                ps.setString(3, azienda.getPartitaIva());
+                ps.setString(4, azienda.getForoCompetente());
+                ps.setString(5, azienda.getCap());
+                ps.setString(6, azienda.getCitta());
+                ps.setString(7, azienda.getProvincia());
+                ps.setString(8, azienda.getNomeRappresentante());
+                ps.setString(9, azienda.getCognomeRappresentante());
+                ps.setString(10, azienda.getTelResponsabile());
+                ps.setString(11, azienda.getNomeResponsabile());
+                ps.setString(12, azienda.getCognomeResponsabile());
+                ps.setString(13, azienda.getEmailResponsabile());
+                ps.setLong(14, azienda.getId());
+
+                System.out.println("query: " + ps);
+
+                result = ps.executeUpdate();
+
+            }
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE UPDATE AZIENDA", ex);
+        }
+        return result;
+    }
+
+
+    @Override
+    public boolean isConvenzionata(long id) throws DataLayerException {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet rset = null;
+
+        String result = null;
+        try {
+            connection = Database.getDatasource().getConnection();
+            ps = connection.prepareStatement(IS_CONVENZIONATA);
+            ps.setLong(1, id);
+            rset = ps.executeQuery();
+
+            if (rset.next()) {
+                if (rset.getString("Stato").equals("CONVENZIONATA")) {
+                    return true;
+                }
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(StudenteDAOImpl.class.getName()).log(Level.SEVERE, null, ex);
+            throw new DataLayerException("ERRORE QUERY CONVENZIONE", ex);
+        } finally {
+            try {
+                rset.close();
+                ps.close();
+                connection.close();
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public String getStato(long id) throws DataLayerException {
+        Connection connection = null;
+        PreparedStatement ps = null;
+        ResultSet rset = null;
+        Azienda azienda = null;
+
+        String result = null;
+        try {
+            connection = Database.getDatasource().getConnection();
+            ps = connection.prepareStatement(GET_STATO);
+            ps.setLong(1, id);
+            rset = ps.executeQuery();
+
+            if (rset.next()) {
+                result = rset.getString("Stato");
+            }
+
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE QUERY STATO AZIENDA", ex);
+        } finally {
+            try {
+                rset.close();
+                ps.close();
+                connection.close();
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+            }
+        }
+        return result;
+
+    }
+
+    /**
+     * Rimnuovi il tirocinio sostenuto dallo studente presso l'azienda
+     *
+     * @param tirocinio
+     * @throws business.dao.data.DataLayerException
+     */
+    @Override
+    public void removeTirocinio(Tirocinio tirocinio) throws DataLayerException {
+        Connection connection = null;
+        PreparedStatement ps = null;
+
+        try {
+            connection = Database.getDatasource().getConnection();
+            ps = connection.prepareStatement(DELETE_TIROCINIO);
+            ps.setLong(1, tirocinio.getAnnuncio().getId());
+            ps.setLong(2, tirocinio.getStudente().getId());
+
+            int result = ps.executeUpdate();
+            if (result != 0) {
+            } else {
+                throw new DataLayerException("ERRORE DELETE TIROCINIO");
+            }
+
+        } catch (SQLException ex) {
+            throw new DataLayerException("ERRORE QUERY RIMOZIONE TIROCINIO", ex);
+        } finally {
+            try {
+                ps.close();
+                connection.close();
+            } catch (SQLException ex) {
+                throw new DataLayerException("ERRORE CHIUSURA CONNESSIONE", ex);
+            }
+        }
+
+    }
+
+    /**
+     * Rimnuovi il tirocinio sostenuto dallo studente presso l'azienda
+     *
+     * @param tirocinio
+     * @return
+     * @throws business.dao.data.DataLayerException
+     */
+    @Override
+    public int setNuovoTirocinio(Tirocinio tirocinio) throws DataLayerException {
+        int result = -1;
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(SET_NUOVO_TIROCINIO)) {
+                ps.setLong(1, tirocinio.getAnnuncio().getId());
+                ps.setLong(2, tirocinio.getStudente().getId());
+                ps.setDate(3, new java.sql.Date(tirocinio.getDataInizio().getTime()));
+                ps.setDate(4, new java.sql.Date(tirocinio.getDataFine().getTime()));
+                ps.setInt(5, tirocinio.getCrediti());
+                result = ps.executeUpdate();
+
+            }
+        } catch (SQLException ex) {
+            if (ex.getErrorCode() == 1062) {
+                //duplicate primary key 
+                return 1062;
+            }
+            throw new DataLayerException("ERRORE QUERY NUOVO TIROCINIO", ex);
+        }
+        return result;
+    }
+
+    @Override
+    public List<Azienda> getAllAziendeConvenzionate() throws DataLayerException {
+        List<Azienda> aziende = new ArrayList();
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            try (PreparedStatement ps = connection.prepareStatement(GET_AZIENDE_CONVENZIONATE)) {
+
+                try (ResultSet rset = ps.executeQuery()) {
+                    while (rset.next()) {
+                        aziende.add(new Azienda(rset.getString("ragSociale")));
+                    }
+                }
+
+            }
+
+        } catch (SQLException ex) {
+            throw new DataLayerException("DATA ERROR GETALLAZIENDECONVENZIONATE", ex);
+        }
+
+        return aziende;
+    }
+
+    @Override
+    public Azienda getAzienda(Azienda azienda) throws DataLayerException {
+
+        PreparedStatement ps;
+        ResultSet rset;
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            ps = connection.prepareStatement(GET_AZIENDA);
+            ps.setLong(1, azienda.getId());
+            rset = ps.executeQuery();
+
+            if (rset.next()) {
+
+                azienda.setNomeRappresentante(rset.getString("nomeRap"));
+                azienda.setCognomeRappresentante(rset.getString("nomeRap"));
+                azienda.setTelResponsabile(rset.getString("telResponsabile"));
+                azienda.setNomeResponsabile(rset.getString("nomeResponsabile"));
+                azienda.setCognomeResponsabile(rset.getString("cognomeResponsabile"));
+                azienda.setEmailResponsabile(rset.getString("emailResponsabile"));
+                azienda.setRagioneSociale(rset.getString("ragSociale"));
+                azienda.setIndirizzoSede(rset.getString("indirizzoSede"));
+                azienda.setPartitaIva(rset.getString("pIVA"));
+                azienda.setForoCompetente(rset.getString("foro"));
+                azienda.setCap(rset.getString("cap"));
+                azienda.setCitta(rset.getString("citta"));
+                azienda.setProvincia(rset.getString("provincia"));
+                azienda.setDataIscrione(rset.getDate("dataInizio"));
+                azienda.setDataTermine(rset.getDate("dataFine"));
+
+            }
+
+            ps.close();
+            connection.close();
+        } catch (SQLException ex) {
+            throw new DataLayerException("GET COMPANY", ex);
+        }
+        return azienda;
+    }
+
+    @Override
+    public int removeAzienda(Azienda azienda) throws DataLayerException {
+
+        PreparedStatement ps;
+        int result = 0;
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            ps = connection.prepareStatement(REMOVE_AZIENDA);
+            ps.setLong(1, azienda.getId());
+
+            result = ps.executeUpdate();
+
+            ps.close();
+            connection.close();
+        } catch (SQLException ex) {
+            throw new DataLayerException("Error remove company", ex);
+        }
+        return result;
+    }
+
+    @Override
+    public InputStream getConvenzione(Azienda azienda) throws DataLayerException {
+        PreparedStatement ps;
+        InputStream inputStream = null;
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            ps = connection.prepareStatement(GET_CONVENZIONE);
+            ps.setLong(1, azienda.getId());
+
+            ResultSet rset = ps.executeQuery();
+
+            if (rset.next()) {
+                Blob blob = rset.getBlob("file");
+                inputStream = blob.getBinaryStream();
+            }
+
+            ps.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            throw new DataLayerException("GET CONVENZIONE", e);
+        }
+
+        return inputStream;
+    }
+
+    @Override
+    public InputStream getModuloConvenzione() throws DataLayerException {
+        PreparedStatement ps;
+        InputStream inputStream = null;
+
+        try (Connection connection = Database.getDatasource().getConnection()) {
+            ps = connection.prepareStatement(GET_MODULO_CONVENZIONE);
+
+            ResultSet rset = ps.executeQuery();
+
+            if (rset.next()) {
+                Blob blob = rset.getBlob("file");
+                inputStream = blob.getBinaryStream();
+            }
+
+            ps.close();
+            connection.close();
+
+        } catch (SQLException e) {
+            throw new DataLayerException("Get modulo convenzione", e);
+        }
+
+        return inputStream;
+    }
+
+}
