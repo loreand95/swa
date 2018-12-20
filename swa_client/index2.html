@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Lumino - Dashboard</title>
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/font-awesome.min.css" rel="stylesheet">
+	<link href="css/datepicker3.css" rel="stylesheet">
+	<link href="css/styles.css" rel="stylesheet">
+
+	<!--Theme-->
+	<link href="css/theme-default.css" rel="stylesheet">
+
+	<!--Custom Font-->
+	<link href="https://fonts.googleapis.com/css?family=Montserrat:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+	<!--[if lt IE 9]>
+		<script src="js/html5shiv.js"></script>
+		<script src="js/respond.min.js"></script>
+		<![endif]-->
+</head>
+
+<body>
+	<nav class="navbar navbar-custom navbar-fixed-top" role="navigation">
+		<div class="container-fluid">
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#sidebar-collapse"><span
+					 class="sr-only">Toggle navigation</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span></button>
+				<a class="navbar-brand" href="#"><span>Lumino</span>Admin</a>
+			</div>
+		</div><!-- /.container-fluid -->
+	</nav>
+	<div id="sidebar-collapse" class="col-sm-3 col-lg-2 sidebar">
+		<div class="profile-sidebar">
+			<div class="profile-userpic">
+				<img src="images/profile-pic-1.jpg" width="50" class="img-responsive" alt="">
+			</div>
+			<div class="profile-usertitle">
+				<div class="profile-usertitle-name">Username</div>
+				<div class="profile-usertitle-status"><span class="indicator label-success"></span>Online</div>
+			</div>
+			<div class="clear"></div>
+		</div>
+		<div class="divider"></div>
+		<ul class="nav menu">
+			<li class="active"><a href="index.html"><em class="fa fa-dashboard">&nbsp;</em> Dashboard</a></li>
+			<li><a href=""><em class="fa fa-sign-in">&nbsp;</em> Login</a></li>
+		</ul>
+	</div>
+	<!--/.sidebar-->
+
+	<div class="col-sm-9 col-sm-offset-3 col-lg-10 col-lg-offset-2 main">
+
+		<div class="row">
+			<ol class="breadcrumb">
+				<li><a href="#">
+						<em class="fa fa-home"></em>
+					</a></li>
+				<li class="active">Dashboard</li>
+			</ol>
+		</div>
+		<!--/.row-->
+
+		<div class="row">
+			<div class="col-lg-12">
+				<h1 class="page-header"></h1>
+			</div>
+		</div>
+		<!--/.row-->
+
+		<div class="row">
+			<div class="col-md-8 col-md-offset-2 col-sm-6 col-xs-12">
+				<div class="panel panel-default">
+					<div class="panel-heading clearfix">Info Azienda</div>
+					<div class="panel-body">
+						<select id="selezione" class="form-control">
+							<option value="default">Default</option>
+
+						</select>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!--/.row-->
+
+		<div id="info1" class="row">
+			<div class="col-md-8 col-md-offset-2 col-sm-6 col-xs-12">
+				<div class="panel panel-default">
+					<div class="panel-body tabs">
+						<ul class="nav nav-pills">
+							<li class="active"><a href="#pilltab1" data-toggle="tab">Info</a></li>
+							<li><a href="#pilltab2" data-toggle="tab">Contatti</a></li>
+						</ul>
+						<div class="tab-content">
+							<h4>Azienda s.r.l</h4>
+							<hr>
+							<div class="tab-pane fade in active" id="pilltab1">
+								<p>Nome:</p>
+								<p>Cognome:</p>
+								<p>P.IVA:</p>
+							</div>
+							<div class="tab-pane fade" id="pilltab2">
+								<p>Telefono:</p>
+								<p>Email:</p>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!--/.panel-->
+			</div><!-- /.col-->
+		</div>
+		<!--/.row-->
+
+		<div id="info2" class="row">
+			<div class="col-md-8 col-md-offset-2 col-sm-6 col-xs-12">
+				<div class="panel panel-default">
+					<div class="panel-body">
+						<div class="search-result-item col-md-12">
+
+							<div class="search-result-item-body col-sm-12">
+								<div class="row">
+									<div class="col-sm-12">
+										<h3 class="search-result-title"><a href="#">Search Result 1</a></h3>
+										<p class="text-muted">Category</p>
+										<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut maximus, odio a imperdiet rhoncus, nunc metus
+											luctus mi, at dignissim sem orci ut massa. Morbi a magna risus. Nunc vestibulum, nibh sit amet dictum
+											pharetra, augue quam faucibus neque, et ultrices dui arcu ac ligula.</p>
+											<br>
+											<a class="btn btn-primary btn-info btn-md" href="#">View Details</a>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!--/.search-result-item-->
+					</div>
+				</div><!--/.panel-->
+			</div><!-- /.col-->
+		</div><!--/.row-->
+	</div><!--/.main-->
+	<script src="js/jquery-1.11.1.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/scripts.js"></script>
+</body>
+</html>
