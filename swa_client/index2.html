@@ -79,8 +79,7 @@
 					<div class="panel-heading clearfix">Info Azienda</div>
 					<div class="panel-body">
 						<select id="selezione" class="form-control">
-							<option value="default">Default</option>
-
+							<option value="def">Seleziona un' azienda...</option>
 						</select>
 					</div>
 				</div>
@@ -97,16 +96,25 @@
 							<li><a href="#pilltab2" data-toggle="tab">Contatti</a></li>
 						</ul>
 						<div class="tab-content">
-							<h4>Azienda s.r.l</h4>
+							<h4 id="nomeAzienda"></h4>
 							<hr>
 							<div class="tab-pane fade in active" id="pilltab1">
-								<p>Nome:</p>
-								<p>Cognome:</p>
-								<p>P.IVA:</p>
+								<p id="iva">P.IVA: </p>
+								<p id="ragsoc">Ragione Sociale: </p>
+								<p id="provincia">Provincia: </p>
+								<p id="disc">Data Iscrizione: </p>
+								<p id="dter">Data Termine: </p>
+								<p id="foro">Foro Competente: </p>
+								<p id="responsabile">Responsabile: </p>
+								<p id="rappresentante">Rappresentante: </p>
 							</div>
 							<div class="tab-pane fade" id="pilltab2">
-								<p>Telefono:</p>
-								<p>Email:</p>
+								<p id="telR">Tel Responsabile: </p>
+								<p id="email">Email: </p>
+								<p id="emailR">Email Responsabile: </p>
+								<p id="sede">Sede: </p>
+								<p id="citta">Città: </p>
+								<p id="cap">Cap: </p>
 							</div>
 						</div>
 					</div>
